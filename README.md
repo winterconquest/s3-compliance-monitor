@@ -12,10 +12,13 @@ S3 버킷의 데이터를 안전하게 지킬 수 있습니다.
 
 ## 아키텍처
 Terraform
+
 └── S3 버킷 생성 (퍼블릭 액세스 차단, KMS 암호화, 버전 관리, 로깅)
 
 boto3 + FastAPI
+
 ├── /s3-status       → S3 퍼블릭 액세스 설정 실시간 조회
+
 └── /trail-history   → CloudTrail 설정 변경 이벤트 추적
 
 ## 탐지 시나리오
