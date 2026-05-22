@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 app = FastAPI()
 s3 = boto3.client('s3')
 cloudtrail = boto3.client('cloudtrail')
-
+iam = boto3.client('iam')
 
 
 @app.get("/")
@@ -64,4 +64,42 @@ def trail_history(limit: int = 5): #기본값 5
         }
         results.append(event_dic)
     return results
-    
+
+@app.get("/iam-status")
+def check_iam_users():
+    user_list = iam.list_users()
+    results=[]
+    for user in user_list.get('Users',[]): #key가 Users
+        user_name = user.get('UserName')
+        response = iam.list_groups_for_user(UserName=user_name)
+
+        for group in response.get('Groups',[]):
+            policies = iam.list_attached_group_policies(GroupName=group['GroupName'])
+
+            for policy in policies.get('AttachedPolicies',[]):
+                policy_arn = policy.get('PolicyArn')  # 여기서 ARN을 동적으로 받음
+                # 정책 상세 내용 조회
+                version = iam.get_policy(PolicyArn=policy_arn)["Policy"]["DefaultVersionId"]
+                document = iam.get_policy_version(PolicyArn=policy_arn, VersionId=version)
+                statements = document["PolicyVersion"]["Document"]["Statement"]
+
+
+                for stmt in statements:
+                    actions = stmt.get('Action')
+                    resources = stmt.get('Resource')
+
+                    if (actions == "*" or actions == ["*"]) and (resources == "*" or resources == ["*"]):
+                        status = "!!!과도한 권한 부여됨!!!"
+                    else:
+                        status = "적정 권한 부여됨"
+
+                    iam_dic = {
+                        "user": user_name,
+                        "group": group['GroupName'],
+                        "policy": policy['PolicyName'],
+                        "status": status,
+                    }
+                    results.append(iam_dic)
+
+    return results
+
