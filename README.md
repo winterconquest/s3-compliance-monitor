@@ -15,7 +15,7 @@ Terraform으로 프로비저닝한 S3 인프라의 설정 변경을 CloudTrail�
 
 ## 아키텍처
 
-'''
+```
 Terraform
 └── S3 버킷 프로비저닝 (퍼블릭 액세스 차단, KMS 암호화, 버전 관리, 로깅)
 
@@ -24,7 +24,7 @@ boto3 + FastAPI
 ├── /trail-history   → CloudTrail 설정 변경 이벤트 추적
 ├── /iam-status      → IAM 사용자 권한 상태 점검
 └── /remediate      → 위험 설정 자동 조치 (dry-run 기본, 태그 기반 예외 처리)  ← 작업 중
-'''
+```
 
 ## 점검 시나리오
 
@@ -52,7 +52,7 @@ boto3 + FastAPI
 ## 기술 스택
 
 - Terraform : 인프라의 코드화 및 버전 관리 (IaC)
-- Trivy : 유지보수가 중단된 tfsec의 기능을 흡수한, 배포 전 환경 취약점을 확인하는 보안 스캐너. 스캔 결과는 'terraform-s3-security/reports/' 참고
+- Trivy : 유지보수가 중단된 tfsec의 기능을 흡수한, 배포 전 환경 취약점을 확인하는 보안 스캐너. 스캔 결과는 `terraform-s3-security/reports/` 참고
 - boto3 : 파이썬 코드만으로 AWS 서비스 상태를 점검하고 안전하게 조치
 - CloudTrail : AWS 서비스의 API 호출 이력을 기록해 설정 변경 추적
 - FastAPI : 점검 결과를 API 엔드포인트로 제공
