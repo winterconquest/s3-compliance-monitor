@@ -8,6 +8,22 @@ s3 = boto3.client('s3')
 cloudtrail = boto3.client('cloudtrail')
 iam = boto3.client('iam')
 
+def is_exempted(bucket_name):
+    try:
+        response = s3.get_bucket_tagging(Bucket=bucket_name)
+        tag_set = response["TagSet"]
+        
+        is_exempt = any(
+            tag["Key"] == "AllowPublic" and tag["Value"] == "true"
+            for tag in tag_set
+        )
+
+        return is_exempt
+
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "NoSuchTagSet":
+            return False
+        raise
 
 @app.get("/")
 def root():
@@ -23,7 +39,7 @@ def s3_status():
             result = s3.get_public_access_block(Bucket=bucket_name)
             config = result["PublicAccessBlockConfiguration"]
             if all(config.values()):
-                results.append({"bucket": bucket_name, "status": "<퍼블릭 엑세스 차단 상태>"})
+                results.append({"bucket": bucket_name, "status": "<퍼블릭 액세스 차단 상태>"})
             else:
                 results.append({"bucket": bucket_name, "status": "경고!! - <퍼블릭 액세스 허용됨>"})
         except ClientError as e:
@@ -103,3 +119,29 @@ def check_iam_users():
 
     return results
 
+@app.get("/remediate")
+def remediate(bucket_name: str, dry_run: bool = True):
+    if dry_run:
+        return {"bucket": bucket_name, "status": f"dry-run 여부 - {dry_run}"}
+    
+    if is_exempted(bucket_name):
+        return {"bucket": bucket_name, "status": "AllowPublic=true로 인해 제외됨"}
+    
+    try: 
+        s3.put_public_access_block( #HTTP 상태 코드 등이 담긴 메타데이터만 반환
+            Bucket=bucket_name,
+            PublicAccessBlockConfiguration={
+                'BlockPublicAcls': True,
+                'IgnorePublicAcls': True,
+                'BlockPublicPolicy': True,
+                'RestrictPublicBuckets': True
+            }
+        )
+        return {"bucket": bucket_name, "status": "<퍼블릭 액세스 차단 적용된 상태>"}
+
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        if error_code == "AccessDenied":
+            return {"bucket": bucket_name, "status": f"접근 실패 - {error_code}"}
+        elif error_code == "NoSuchBucket":
+            return {"bucket": bucket_name, "status": "에러 - <버킷 없음>"}
