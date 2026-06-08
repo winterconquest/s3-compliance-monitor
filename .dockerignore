@@ -1,0 +1,36 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AWS Credentials
+.aws/
+
+# Docker
+Dockerfile
+.dockerignore
+
+# 문서
+README.md
+*.md
+
+# Terraform
+terraform-s3-security/
+
+# 테스트, 로그
+*.log
+tests/

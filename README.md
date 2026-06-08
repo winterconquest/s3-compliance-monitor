@@ -56,3 +56,20 @@ boto3 + FastAPI
 - boto3 : 파이썬 코드만으로 AWS 서비스 상태를 점검하고 안전하게 조치
 - CloudTrail : AWS 서비스의 API 호출 이력을 기록해 설정 변경 추적
 - FastAPI : 점검 결과를 API 엔드포인트로 제공
+- Docker : 애플리케이션 컨테이너화 (이식성, 환경 격리)
+
+## 실행 방법
+
+### Docker로 실행
+
+```bash
+# 이미지 빌드
+docker build -t s3-monitor .
+
+# 컨테이너 실행 (AWS 자격증명 마운트)
+docker run -v ${HOME}/.aws:/root/.aws -p 8000:8000 s3-monitor
+
+# 브라우저에서 http://localhost:8000/docs 접속
+```
+
+AWS 자격증명은 호스트의 `~/.aws/` 폴더를 컨테이너에 마운트하는 방식으로 전달합니다. 운영 환경에서는 IAM Role 사용을 권장합니다.
