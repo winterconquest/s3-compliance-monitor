@@ -1,20 +1,25 @@
-
+# Python
 venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
+# 환경변수
 .env
 .env.local
 
+# IDE
 .vscode/
 .idea/
 
+# OS
 .DS_Store
 Thumbs.db
 
+# AWS Credentials
 .aws/
 credentials
 
+# 로그
 *.log
