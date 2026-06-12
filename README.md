@@ -23,7 +23,8 @@ boto3 + FastAPI
 ├── /s3-status       → S3 퍼블릭 액세스 설정 점검
 ├── /trail-history   → CloudTrail 설정 변경 이벤트 추적
 ├── /iam-status      → IAM 사용자 권한 상태 점검
-└── /remediate       → 위험 설정 자동 조치 (dry-run 기본, 태그 기반 예외 처리)
+├── /remediate       → 단일 버킷 조치 (dry-run 기본, 태그 기반 예외 처리)
+└── /auto-remediate  → 점검 결과 기반 위험 버킷 일괄 조치 (dry-run 기본)
 ```
 
 ## 점검 시나리오
@@ -33,7 +34,7 @@ boto3 + FastAPI
 3. /s3-status에서 퍼블릭 액세스가 허용된 상태를 감지
 4. /trail-history에서 해당 설정 변경 이벤트를 추적하여 변경자, 대상 버킷, 변경 시각, 변경 내용을 확인
 5. /iam-status에서 IAM 사용자, 소속 그룹, 정책 목록을 조회해 불필요하게 부여된 권한이 있는지 점검
-6. /remediate에서 위험한 설정을 자동 조치 (dry-run 기본)
+6. /auto-remediate에서 위험으로 식별된 버킷을 일괄 조치 (dry-run 기본, 태그 예외 적용)
 
 ## Remediation 모듈
 
@@ -47,7 +48,8 @@ boto3 + FastAPI
 - **태그 기반 예외 처리**: `AllowPublic=true` 태그가 부여된 리소스는 조치 대상에서 제외.
   버킷 소유자가 자기 책임으로 태그를 부여하고, 자동화 코드는 그것을 신뢰. 권한과 책임의 자연스러운 분리.
 
-- **다음 단계**: detection 결과(`/s3-status`)와 통합해 위험 리소스만 선별적으로 조치하는 흐름으로 구현 예정.
+- **detection-remediation 통합**: `/auto-remediate`가 점검 결과를 받아 위험 버킷만 선별 조치. 
+  단일 버킷용 `/remediate`와 같은 안전장치(dry-run, 태그 예외)를 일괄 처리에도 그대로 적용.
 
 ## 기술 스택
 

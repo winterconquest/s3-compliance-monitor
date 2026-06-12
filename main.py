@@ -145,3 +145,19 @@ def remediate(bucket_name: str, dry_run: bool = True):
             return {"bucket": bucket_name, "status": f"접근 실패 - {error_code}"}
         elif error_code == "NoSuchBucket":
             return {"bucket": bucket_name, "status": "에러 - <버킷 없음>"}
+
+@app.get("/auto-remediate")
+def auto_remediate(dry_run: bool = True):
+    # 1. 모든 버킷 상태 조회
+    status_results = s3_status()
+    
+    # 2. 위험한 버킷만 필터링
+    actions = []
+    for item in status_results:
+        if "허용됨" in item["status"] or "설정 없음" in item["status"]:  # 위험 조건
+            # 3. remediate 호출
+            result = remediate(item["bucket"], dry_run=dry_run)
+            actions.append(result)
+    
+    # 4. 결과 반환
+    return actions
