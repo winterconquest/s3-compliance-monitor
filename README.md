@@ -17,7 +17,8 @@ Terraform으로 프로비저닝한 S3 인프라의 설정 변경을 CloudTrail�
 
 ```
 Terraform
-└── S3 버킷 프로비저닝 (퍼블릭 액세스 차단, KMS 암호화, 버전 관리, 로깅)
+├── S3 버킷 프로비저닝 (퍼블릭 액세스 차단, KMS 암호화, 버전 관리, 로깅)
+└── 실시간 알림 시스템 (EventBridge + Lambda + Slack)
 
 boto3 + FastAPI
 ├── /s3-status       → S3 퍼블릭 액세스 설정 점검
@@ -25,6 +26,9 @@ boto3 + FastAPI
 ├── /iam-status      → IAM 사용자 권한 상태 점검
 ├── /remediate       → 단일 버킷 조치 (dry-run 기본, 태그 기반 예외 처리)
 └── /auto-remediate  → 점검 결과 기반 위험 버킷 일괄 조치 (dry-run 기본)
+
+실시간 알림 흐름
+S3 설정 변경 → CloudTrail 기록 → EventBridge 캐치 → Lambda 호출 → Slack 알림
 ```
 
 ## 점검 시나리오
@@ -35,6 +39,7 @@ boto3 + FastAPI
 4. /trail-history에서 해당 설정 변경 이벤트를 추적하여 변경자, 대상 버킷, 변경 시각, 변경 내용을 확인
 5. /iam-status에서 IAM 사용자, 소속 그룹, 정책 목록을 조회해 불필요하게 부여된 권한이 있는지 점검
 6. /auto-remediate에서 위험으로 식별된 버킷을 일괄 조치 (dry-run 기본, 태그 예외 적용)
+7. 위험 변경 발생 시 EventBridge → Lambda → Slack으로 운영자에게 실시간 알림
 
 ## Remediation 모듈
 
@@ -51,6 +56,17 @@ boto3 + FastAPI
 - **detection-remediation 통합**: `/auto-remediate`가 점검 결과를 받아 위험 버킷만 선별 조치. 
   단일 버킷용 `/remediate`와 같은 안전장치(dry-run, 태그 예외)를 일괄 처리에도 그대로 적용.
 
+## 실시간 알림 시스템
+
+S3 설정 변경이 발생하는 즉시 운영자에게 알림이 도착하는 이벤트 기반 시스템입니다.
+주기 점검에 의존하지 않고 변경 발생 시점에 인지할 수 있습니다.
+
+- **이벤트 감지**: CloudTrail에 기록된 PutBucketPublicAccessBlock API 호출을 EventBridge가 실시간으로 캐치합니다.
+- **알림 처리**: Lambda 함수(Python 3.12)가 이벤트에서 버킷명, 변경자, 시간, 차단 상태를 추출하고 Slack 메시지로 보냅니다.
+- **외부 의존성 없음**: Lambda는 표준 라이브러리 `urllib`만 사용합니다. 외부 패키지 패키징 없이 동작합니다.
+- **민감 정보 관리**: Slack Webhook URL은 Terraform 변수(`terraform.tfvars`)로 분리하고 `.gitignore`로 유출 방지합니다.
+- **IaC**: 알림 시스템 전체 (Lambda, IAM Role, EventBridge 규칙, 권한)를 Terraform으로 정의했습니다.
+
 ## 기술 스택
 
 - Terraform : 인프라의 코드화 및 버전 관리 (IaC)
@@ -59,6 +75,9 @@ boto3 + FastAPI
 - CloudTrail : AWS 서비스의 API 호출 이력을 기록해 설정 변경 추적
 - FastAPI : 점검 결과를 API 엔드포인트로 제공
 - Docker : 애플리케이션 컨테이너화 (이식성, 환경 격리)
+- EventBridge : CloudTrail 이벤트 기반 실시간 알림 트리거
+- Lambda : 알림 메시지 포맷팅 및 Slack 전송 (Python, 외부 의존성 없음)
+- Slack Incoming Webhook : 운영자에게 실시간 알림 채널
 
 ## 실행 방법
 
