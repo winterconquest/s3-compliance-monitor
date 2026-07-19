@@ -31,7 +31,7 @@ boto3 + FastAPI
 S3 설정 변경 → CloudTrail 기록 → EventBridge 캐치 → Lambda 호출 → Slack 알림
 ```
 
-![Swagger UI - 점검·조치 엔드포인트](./docs/images/swagger-overview.jpg)
+![Swagger UI - 점검·조치 엔드포인트](./docs/images/swagger-overview.png)
 
 > `/docs`에서 확인되는 6개 엔드포인트
 
@@ -55,7 +55,7 @@ S3 설정 변경 → CloudTrail 기록 → EventBridge 캐치 → Lambda 호출 
 
 > 변경 시각·변경자·대상 버킷·변경 내용을 CloudTrail에서 추적
 
-![iam-status - 과도한 권한 사용자 탐지](./docs/images/iam-status.jpg)
+![iam-status - 과도한 권한 사용자 탐지](./docs/images/iam-status.png)
 
 > AdministratorAccess가 부여된 사용자를 탐지한 응답
 
@@ -85,7 +85,7 @@ S3 설정 변경이 발생하는 즉시 운영자에게 알림이 도착하는 �
 - **민감 정보 관리**: Slack Webhook URL은 Terraform 변수(`terraform.tfvars`)로 분리하고 `.gitignore`로 유출 방지합니다.
 - **IaC**: 알림 시스템 전체 (Lambda, IAM Role, EventBridge 규칙, 권한)를 Terraform으로 정의했습니다.
 
-![Slack 실시간 알림 - 위험/안전 상태별 알림](./docs/images/slack_alert.jpg)
+![Slack 실시간 알림 - 위험/안전 상태별 알림](./docs/images/slack_alert.png)
 
 > 퍼블릭 액세스 변경 시 상태(위험/안전)에 따라 즉시 알림 전송
 
