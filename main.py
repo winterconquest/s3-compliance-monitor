@@ -39,15 +39,15 @@ def s3_status():
             result = s3.get_public_access_block(Bucket=bucket_name)
             config = result["PublicAccessBlockConfiguration"]
             if all(config.values()):
-                results.append({"bucket": bucket_name, "status": "<퍼블릭 액세스 차단 상태>"})
+                results.append({"bucket": bucket_name, "status": "퍼블릭 액세스 차단 상태"})
             else:
-                results.append({"bucket": bucket_name, "status": "경고!! - <퍼블릭 액세스 허용됨>"})
+                results.append({"bucket": bucket_name, "status": "경고 - 퍼블릭 액세스 허용됨"})
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             if error_code == "NoSuchPublicAccessBlockConfiguration":
-                results.append({"bucket": bucket_name, "status": "경고!! - <퍼블릭 액세스 블록 설정 없음>"})
+                results.append({"bucket": bucket_name, "status": "경고!! - 퍼블릭 액세스 블록 설정 없음"})
             elif error_code == "NoSuchBucket":
-                results.append({"bucket": bucket_name, "status": "에러 - <버킷 없음>"})
+                results.append({"bucket": bucket_name, "status": "에러 - 버킷 없음"})
     return results
     
 
@@ -76,7 +76,7 @@ def trail_history(limit: int = 5): #기본값 5
             "time": eventtime,
             "user": user,
             "bucket": bucket_name,
-            "status": "<차단 되어 있음>" if all(config.values()) else ("[!!!퍼블릭 액세스 허용된 상태!!!]"),
+            "status": "차단 되어 있음" if all(config.values()) else ("퍼블릭 액세스 허용된 상태"),
         }
         results.append(event_dic)
     return results
@@ -105,7 +105,7 @@ def check_iam_users():
                     resources = stmt.get('Resource')
 
                     if (actions == "*" or actions == ["*"]) and (resources == "*" or resources == ["*"]):
-                        status = "!!!과도한 권한 부여됨!!!"
+                        status = "과도한 권한 부여됨"
                     else:
                         status = "적정 권한 부여됨"
 
@@ -137,14 +137,14 @@ def remediate(bucket_name: str, dry_run: bool = True):
                 'RestrictPublicBuckets': True
             }
         )
-        return {"bucket": bucket_name, "status": "<퍼블릭 액세스 차단 적용된 상태>"}
+        return {"bucket": bucket_name, "status": "[퍼블릭 액세스 차단 적용된 상태]"}
 
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
         if error_code == "AccessDenied":
             return {"bucket": bucket_name, "status": f"접근 실패 - {error_code}"}
         elif error_code == "NoSuchBucket":
-            return {"bucket": bucket_name, "status": "에러 - <버킷 없음>"}
+            return {"bucket": bucket_name, "status": "에러 - [버킷 없음]"}
 
 @app.get("/auto-remediate")
 def auto_remediate(dry_run: bool = True):
