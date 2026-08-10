@@ -2,6 +2,14 @@ from fastapi import FastAPI
 import boto3
 import json
 from botocore.exceptions import ClientError
+from pydantic import BaseModel
+
+class RemediateRequest(BaseModel):
+    bucket_name: str
+    dry_run: bool = True
+
+class AutoRemediateRequest(BaseModel):
+    dry_run: bool = True
 
 app = FastAPI()
 s3 = boto3.client('s3')
@@ -119,17 +127,18 @@ def check_iam_users():
 
     return results
 
-@app.get("/remediate")
-def remediate(bucket_name: str, dry_run: bool = True):
-    if dry_run:
-        return {"bucket": bucket_name, "status": f"dry-run 여부 - {dry_run}"}
+@app.post("/remediate")
+def remediate(req: RemediateRequest):
     
-    if is_exempted(bucket_name):
-        return {"bucket": bucket_name, "status": "AllowPublic=true로 인해 제외됨"}
-    
+    if is_exempted(req.bucket_name):
+        return {"bucket": req.bucket_name, "status": "AllowPublic=true로 인해 제외됨"}
+
+    if req.dry_run:
+        return {"bucket": req.bucket_name, "status": "[dry-run] 퍼블릭 액세스 차단을 적용할 예정"}
+        
     try: 
         s3.put_public_access_block( #HTTP 상태 코드 등이 담긴 메타데이터만 반환
-            Bucket=bucket_name,
+            Bucket=req.bucket_name,
             PublicAccessBlockConfiguration={
                 'BlockPublicAcls': True,
                 'IgnorePublicAcls': True,
@@ -137,24 +146,26 @@ def remediate(bucket_name: str, dry_run: bool = True):
                 'RestrictPublicBuckets': True
             }
         )
-        return {"bucket": bucket_name, "status": "[퍼블릭 액세스 차단 적용된 상태]"}
+        return {"bucket": req.bucket_name, "status": "[퍼블릭 액세스 차단 적용된 상태]"}
 
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
         if error_code == "AccessDenied":
-            return {"bucket": bucket_name, "status": f"접근 실패 - {error_code}"}
+            return {"bucket": req.bucket_name, "status": f"접근 실패 - {error_code}"}
         elif error_code == "NoSuchBucket":
-            return {"bucket": bucket_name, "status": "에러 - [버킷 없음]"}
+            return {"bucket": req.bucket_name, "status": "에러 - [버킷 없음]"}
+        else:
+            return {"bucket": req.bucket_name, "status": f"에러 - {error_code}"}
 
-@app.get("/auto-remediate")
-def auto_remediate(dry_run: bool = True):
+@app.post("/auto-remediate")
+def auto_remediate(req: AutoRemediateRequest):
 
     status_results = s3_status()
     
     actions = []
     for item in status_results:
         if "허용됨" in item["status"] or "설정 없음" in item["status"]:  # 위험 조건
-            result = remediate(item["bucket"], dry_run=dry_run)
+            result = remediate(RemediateRequest(bucket_name=item["bucket"], dry_run=req.dry_run))
             actions.append(result)
     
     return actions
