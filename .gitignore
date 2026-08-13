@@ -23,3 +23,5 @@ credentials
 
 # 로그
 *.log
+
+trivy.exe
