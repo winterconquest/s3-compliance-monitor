@@ -29,7 +29,7 @@ README.md
 *.md
 
 # Terraform
-terraform-s3-security/
+terraform-*/
 
 # 테스트, 로그
 *.log
