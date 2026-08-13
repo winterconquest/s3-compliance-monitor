@@ -21,11 +21,5 @@ Thumbs.db
 .aws/
 credentials
 
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.*
-*.tfvars
-
 # 로그
 *.log
