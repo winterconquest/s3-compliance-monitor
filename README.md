@@ -9,6 +9,8 @@ Terraform으로 프로비저닝한 S3 인프라의 설정 변경을 CloudTrail�
 > [aws-3tier-infra](https://github.com/winterconquest/aws-3tier-infra)로 이어졌다.
 > 그쪽은 인프라를 직접 설계·구축하고 장애 복구와 모니터링을 실측 검증한 프로젝트다.
 
+각 리소스와 구성에 대한 결정 근거는 [decisions.md](./docs/decisions.md)를 참고.
+
 ### 준실시간 탐지 흐름
 
 S3 설정 변경 → CloudTrail 기록 → EventBridge 캐치 → Lambda 호출 → Slack 알림
