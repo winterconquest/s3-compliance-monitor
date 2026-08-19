@@ -25,3 +25,4 @@ credentials
 *.log
 
 trivy.exe
+k8s/base/secret.yaml

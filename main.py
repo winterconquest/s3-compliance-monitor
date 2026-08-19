@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI,HTTPException
 import boto3
 import json
 from botocore.exceptions import ClientError
@@ -169,3 +169,15 @@ def auto_remediate(req: AutoRemediateRequest):
             actions.append(result)
     
     return actions
+
+@app.get("/livez")
+def livez():
+    return {"status": "alive"}
+
+@app.get("/readyz")
+def readyz():
+    try:
+        boto3.client("sts").get_caller_identity()
+        return {"status": "ready"}
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
