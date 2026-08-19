@@ -6,7 +6,8 @@ metadata:
   labels:
     app: s3-monitor
 spec:
-  replicas: 1             
+  replicas: 1
+  revisionHistoryLimit: 3             
   selector:
     matchLabels:
       app: s3-monitor             
