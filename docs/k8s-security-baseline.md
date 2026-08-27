@@ -19,11 +19,15 @@ POD=$(kubectl get pod -l app=s3-monitor -o jsonpath='{.items[0].metadata.name}')
 | # | 문제 | 위험 | 상태 |
 |---|---|---|---|
 | 1 | 컨테이너가 root(uid 0)로 실행 | 패키지 설치, 임의 파일 쓰기, 커널 기능 요청 | 미해결 |
-| 2 | Pod 간 통신에 제한 없음 | 한 Pod 탈취 시 클러스터 내 횡적 이동 | 미해결 |
+| 2 | Pod 간 통신에 제한 없음 | 한 Pod 탈취 시 클러스터 내 횡적 이동 | **해결 (Day 12)** |
+before: {"status":"alive"}           ← 아무 Pod에서나 접근됨
+after:  wget: download timed out     ← 차단
+        (단, Ingress 경유는 정상)
 | 3 | 사용하지 않는 SA 토큰이 자동 마운트 | 최소 권한 원칙 위배. SA 권한 확대 시 즉시 침해 경로 | 미해결 |
 | 4 | 루트 파일 시스템 쓰기 가능 | 악성 스크립트 주입, 바이너리 교체 | 미해결 |
 | 5 | 불필요한 Linux capability 보유 | 네트워크 조작(NET_RAW), 파일 권한 우회(DAC_OVERRIDE) | 미해결 |
 | 6 | 자원 상한이 느슨함 (QoS: Burstable) | 자원 폭주 시 같은 노드의 다른 Pod가 eviction (자원 고갈형 DoS) | 미해결 |
+| 7 | Egress 정책 부재 | 컨테이너 탈취 시 데이터 유출이나 외부 통신을 막지 못함 | 미해결 |
 
 ---
 
@@ -56,6 +60,7 @@ kubectl run tmp --rm -it --image=busybox:1.36 --restart=Never -- \
 **해결 예정** — NetworkPolicy default-deny 후 필요한 경로만 허용
 
 > kind 기본 CNI는 NetworkPolicy를 무시하므로 Calico를 넣은 클러스터가 필요하다.
+
 
 ---
 
