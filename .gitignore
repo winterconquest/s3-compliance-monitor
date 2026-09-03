@@ -1,3 +1,13 @@
+# Terraform (전역 안전망 - 각 terraform-*/ 디렉토리에도 개별 .gitignore 권장)
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+destroy-plan
+.terraform/
+terraform.tfvars
+
+
 # Python
 venv/
 __pycache__/

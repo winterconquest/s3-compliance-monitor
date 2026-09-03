@@ -16,9 +16,11 @@ spec:
       labels:
         app: s3-monitor          
     spec:
+      serviceAccountName: s3-monitor-sa
       containers:
         - name: s3-monitor-container
-          image: s3-compliance-monitor:latest
+          #image: 703440311746.dkr.ecr.ap-northeast-2.amazonaws.com/s3-compliance-monitor:latest #EKS(ECR)
+          image: s3-compliance-monitor:latest #kind(local)
           imagePullPolicy: IfNotPresent
           ports:
           - containerPort: 8000
@@ -41,8 +43,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: s3-monitor-config
-            - secretRef:
-                name: s3-monitor-secret
           resources:
             requests:
               cpu: 100m

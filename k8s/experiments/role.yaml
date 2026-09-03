@@ -1,0 +1,12 @@
+# 학습용 실습 — 실제 s3-monitor는 K8s API를 호출하지 않아 클러스터에는 미적용
+# Day 17 RBAC 최소 권한 Role 설계 실습 (get/list만 허용, delete는 no로 검증)
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: pod-role
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
