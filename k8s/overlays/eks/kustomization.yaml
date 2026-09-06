@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - path: patch-serviceaccount.yaml
+    target:
+      kind: ServiceAccount
+      name: s3-monitor-sa
+  - path: patch-deployment.yaml
+    target:
+      kind: Deployment
+      name: s3-monitor

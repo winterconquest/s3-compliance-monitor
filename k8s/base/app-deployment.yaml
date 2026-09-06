@@ -19,8 +19,8 @@ spec:
       serviceAccountName: s3-monitor-sa
       containers:
         - name: s3-monitor-container
-          #image: 703440311746.dkr.ecr.ap-northeast-2.amazonaws.com/s3-compliance-monitor:latest #EKS(ECR)
-          image: s3-compliance-monitor:latest #kind(local)
+          image: ECR_IMAGE_PLACEHOLDER #EKS(ECR) - overlays/eks에서 patch로 실제 값 채움
+          #image: s3-compliance-monitor:latest #kind(local)
           imagePullPolicy: IfNotPresent
           ports:
           - containerPort: 8000

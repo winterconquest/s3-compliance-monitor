@@ -1,0 +1,10 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s3-monitor
+spec:
+  template:
+    spec:
+      containers:
+        - name: s3-monitor-container
+          image: <ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/s3-compliance-monitor:latest
