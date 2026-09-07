@@ -19,8 +19,13 @@ spec:
       serviceAccountName: s3-monitor-sa
       containers:
         - name: s3-monitor-container
+          securityContext:
+           runAsNonRoot: true
+           allowPrivilegeEscalation: false
+           readOnlyRootFilesystem: true
+           capabilities:
+             drop: ["ALL"]
           image: ECR_IMAGE_PLACEHOLDER #EKS(ECR) - overlays/eks에서 patch로 실제 값 채움
-          #image: s3-compliance-monitor:latest #kind(local)
           imagePullPolicy: IfNotPresent
           ports:
           - containerPort: 8000
