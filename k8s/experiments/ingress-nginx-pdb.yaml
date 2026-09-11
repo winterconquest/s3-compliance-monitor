@@ -1,0 +1,16 @@
+# 학습용 실습 — 단일 노드 kind 클러스터에서는 ingress-nginx-controller가
+# hostPort(80/443)를 쓰기 때문에 replicas 확장이 원천적으로 불가능(FailedScheduling:
+# didn't have free ports). 클러스터에는 미적용. EKS(멀티 노드) 환경에서
+# 재검증 예정.
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ingress-nginx-controller-pdb
+  namespace: ingress-nginx
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: ingress-nginx

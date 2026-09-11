@@ -7,3 +7,4 @@ resources:
   - app-deployment.yaml
   - service.yaml
   - ingress.yaml
+  - poddisruptionbudget.yaml

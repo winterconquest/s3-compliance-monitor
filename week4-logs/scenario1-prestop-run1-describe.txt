@@ -1,0 +1,59 @@
+Name:             s3-monitor-7686ccfc7d-sq8sx
+Namespace:        default
+Priority:         0
+Service Account:  s3-monitor-sa
+Node:             calico-control-plane/172.19.0.2
+Start Time:       Thu, 10 Sep 2026 21:03:43 +0900
+Labels:           app=s3-monitor
+                  pod-template-hash=7686ccfc7d
+Annotations:      cni.projectcalico.org/containerID: a2bc2307d015b1c405dd07ca4a8de1fb259eda4b51ba54e62add08a8a03fd584
+                  cni.projectcalico.org/podIP: 192.168.71.40/32
+                  cni.projectcalico.org/podIPs: 192.168.71.40/32
+                  kubectl.kubernetes.io/restartedAt: 2026-09-04T07:49:21+09:00
+Status:           Running
+IP:               192.168.71.40
+IPs:
+  IP:           192.168.71.40
+Controlled By:  ReplicaSet/s3-monitor-7686ccfc7d
+Containers:
+  s3-monitor-container:
+    Container ID:   containerd://e0ccffb272e71ec9e36ff970b6af523059a646dc66a619de158c72443ab8a90c
+    Image:          s3-compliance-monitor:latest
+    Image ID:       docker.io/library/import-2026-09-06@sha256:12e8a7c6758f011512025cf7b0a14ff71220012a7578c9e8df72e6f6dbb617d8
+    Port:           8000/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Thu, 10 Sep 2026 21:03:43 +0900
+    Ready:          True
+    Restart Count:  0
+    Limits:
+      memory:  256Mi
+    Requests:
+      cpu:      100m
+      memory:   128Mi
+    Liveness:   http-get http://:8000/livez delay=10s timeout=1s period=10s #success=1 #failure=3
+    Readiness:  http-get http://:8000/livez delay=0s timeout=1s period=2s #success=1 #failure=3
+    Environment Variables from:
+      s3-monitor-config  ConfigMap  Optional: false
+    Environment:         <none>
+    Mounts:              <none>
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:                      <none>
+QoS Class:                    Burstable
+Node-Selectors:               <none>
+Tolerations:                  node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                              node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                From               Message
+  ----     ------     ----               ----               -------
+  Normal   Scheduled  20s                default-scheduler  Successfully assigned default/s3-monitor-7686ccfc7d-sq8sx to calico-control-plane
+  Normal   Pulled     20s                kubelet            spec.containers{s3-monitor-container}: Container image "s3-compliance-monitor:latest" already present on machine and can be accessed by the pod
+  Normal   Created    20s                kubelet            spec.containers{s3-monitor-container}: Container created
+  Normal   Started    20s                kubelet            spec.containers{s3-monitor-container}: Container started
+  Warning  Unhealthy  19s (x2 over 20s)  kubelet            spec.containers{s3-monitor-container}: Readiness probe failed: Get "http://192.168.71.40:8000/livez": dial tcp 192.168.71.40:8000: connect: connection refused
