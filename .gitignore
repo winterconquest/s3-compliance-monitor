@@ -33,6 +33,7 @@ credentials
 
 # 로그
 *.log
+!week4-logs/*.log
 
 #trivy
 trivy.exe
@@ -41,3 +42,4 @@ trivy.exe
 k8s/base/secret.yaml
 k8s/overlays/eks/patch-serviceaccount.yaml
 k8s/overlays/eks/patch-deployment.yaml
+

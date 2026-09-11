@@ -1,0 +1,5 @@
+12:47:22.359 NAME                        READY   STATUS    RESTARTS   AGE
+12:47:22.361 s3-monitor-b54c8cc8-v4fhw   1/1     Running   0          14h
+12:49:00.180 s3-monitor-b54c8cc8-v4fhw   0/1     Completed   0          14h
+12:49:00.326 s3-monitor-b54c8cc8-v4fhw   0/1     Running     1 (1s ago)   14h
+12:49:06.197 s3-monitor-b54c8cc8-v4fhw   1/1     Running     1 (7s ago)   14h
