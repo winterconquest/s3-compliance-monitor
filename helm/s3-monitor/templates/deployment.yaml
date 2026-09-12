@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: s3-monitor
+  labels:
+    app: s3-monitor
+spec:
+  replicas: {{ .Values.replicas }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  revisionHistoryLimit: 3             
+  selector:
+    matchLabels:
+      app: s3-monitor             
+  template:                  
+    metadata:
+      labels:
+        app: s3-monitor          
+    spec:
+      serviceAccountName: s3-monitor-sa
+      containers:
+        - name: s3-monitor-container
+          securityContext:
+           runAsNonRoot: true
+           allowPrivilegeEscalation: false
+           readOnlyRootFilesystem: true
+           capabilities:
+             drop: ["ALL"]
+          image: {{ .Values.image }} #kind는 values-kind.yaml, EKS는 values-eks.yaml에서 채움
+          imagePullPolicy: IfNotPresent
+          lifecycle:
+            preStop:
+             exec:
+               command: ["sh", "-c", "sleep {{ .Values.preStopSleepSeconds }}"]
+          ports:
+          - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.path }}
+              port: 8000
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.path }}
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 1
+            failureThreshold: 3
+          envFrom:
+            - configMapRef:
+                name: s3-monitor-config
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+            limits:
+              memory: {{ .Values.resources.limits.memory }}

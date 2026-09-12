@@ -1,0 +1,4 @@
+image: s3-compliance-monitor:latest
+
+readinessProbe:
+  path: /livez

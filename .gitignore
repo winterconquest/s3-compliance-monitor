@@ -42,4 +42,5 @@ trivy.exe
 k8s/base/secret.yaml
 k8s/overlays/eks/patch-serviceaccount.yaml
 k8s/overlays/eks/patch-deployment.yaml
+helm/s3-monitor/values-eks.yaml
 
