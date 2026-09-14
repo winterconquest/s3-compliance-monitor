@@ -1,0 +1,5 @@
+image: <ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/s3-compliance-monitor:latest
+readinessProbe:
+  path: /readyz
+serviceAccountRoleArn: arn:aws:iam::<ACCOUNT_ID>:role/s3-monitor-irsa-role
+

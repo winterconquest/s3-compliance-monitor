@@ -1,0 +1,17 @@
+10:24:11.534 NAME                        READY   STATUS    RESTARTS   AGE
+10:24:11.535 s3-monitor-b54c8cc8-z4xdr   1/1     Running   0          22m
+10:24:24.472 s3-monitor-b54c8cc8-z4xdr   1/1     Terminating   0          22m
+10:24:24.481 s3-monitor-b54c8cc8-cr8c2   0/1     Pending       0          0s
+10:24:24.484 s3-monitor-b54c8cc8-z4xdr   1/1     Terminating   0          22m
+10:24:24.486 s3-monitor-b54c8cc8-cr8c2   0/1     Pending       0          0s
+10:24:24.498 s3-monitor-b54c8cc8-cr8c2   0/1     ContainerCreating   0          0s
+10:24:24.665 s3-monitor-b54c8cc8-cr8c2   0/1     ContainerCreating   0          0s
+10:24:24.791 s3-monitor-b54c8cc8-cr8c2   0/1     ContainerCreating   0          0s
+10:24:24.904 s3-monitor-b54c8cc8-cr8c2   0/1     Running             0          0s
+10:24:24.906 s3-monitor-b54c8cc8-z4xdr   1/1     Terminating         0          22m
+10:24:25.002 s3-monitor-b54c8cc8-z4xdr   0/1     Completed           0          22m
+10:24:25.625 s3-monitor-b54c8cc8-z4xdr   0/1     Completed           0          22m
+10:24:25.630 s3-monitor-b54c8cc8-z4xdr   0/1     Completed           0          22m
+10:24:25.633 s3-monitor-b54c8cc8-z4xdr   0/1     Completed           0          22m
+10:24:30.642 s3-monitor-b54c8cc8-cr8c2   1/1     Running             0          6s
+10:24:30.648 s3-monitor-b54c8cc8-cr8c2   1/1     Running             0          6s

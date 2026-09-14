@@ -1,0 +1,20 @@
+# Terraform 상태 파일 (민감 정보 포함)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Terraform 설정
+.terraform/
+
+# 변수 파일 (비밀 정보 포함)
+terraform.tfvars
+*.tfvars
+
+# Plan 파일 (상태 정보 포함될 수 있음)
+*.tfplan
+tfplan
+destroy-plan
+
+# OS
+.DS_Store
+Thumbs.db

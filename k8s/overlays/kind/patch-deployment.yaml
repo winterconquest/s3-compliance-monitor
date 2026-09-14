@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s3-monitor
+spec:
+  template:
+    spec:
+      containers:
+        - name: s3-monitor-container
+          image: s3-compliance-monitor:latest
+          readinessProbe:
+            httpGet:
+              path: /livez
+              port: 8000

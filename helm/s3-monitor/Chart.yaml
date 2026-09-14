@@ -1,0 +1,5 @@
+apiVersion: v2
+name: s3-monitor
+description: S3 컴플라이언스 점검 애플리케이션
+version: 0.1.0
+appVersion: "1.0"

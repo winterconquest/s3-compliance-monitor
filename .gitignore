@@ -1,3 +1,13 @@
+# Terraform (전역 안전망 - 각 terraform-*/ 디렉토리에도 개별 .gitignore 권장)
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+destroy-plan
+.terraform/
+terraform.tfvars
+
+
 # Python
 venv/
 __pycache__/
@@ -21,14 +31,16 @@ Thumbs.db
 .aws/
 credentials
 
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.*
-*.tfvars
-
-
 # 로그
 *.log
+!week4-logs/*.log
 
+#trivy
 trivy.exe
+
+#k8s
+k8s/base/secret.yaml
+k8s/overlays/eks/patch-serviceaccount.yaml
+k8s/overlays/eks/patch-deployment.yaml
+helm/s3-monitor/values-eks.yaml
+

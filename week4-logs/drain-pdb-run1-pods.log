@@ -1,0 +1,12 @@
+22:24:38.709 NAME                          READY   STATUS    RESTARTS   AGE
+22:24:38.711 s3-monitor-7686ccfc7d-ngf66   1/1     Running   0          56m
+22:24:38.712 s3-monitor-7686ccfc7d-rwr72   1/1     Running   0          58m
+22:25:14.183 s3-monitor-7686ccfc7d-rwr72   1/1     Running   0          58m
+22:25:14.196 s3-monitor-7686ccfc7d-rwr72   1/1     Terminating   0          58m
+22:25:14.231 s3-monitor-7686ccfc7d-t5xb8   0/1     Pending       0          0s
+22:25:14.283 s3-monitor-7686ccfc7d-rwr72   1/1     Terminating   0          58m
+22:25:14.314 s3-monitor-7686ccfc7d-t5xb8   0/1     Pending       0          0s
+22:25:19.917 s3-monitor-7686ccfc7d-rwr72   1/1     Terminating   0          59m
+22:25:20.005 s3-monitor-7686ccfc7d-rwr72   0/1     Completed     0          59m
+22:25:20.563 s3-monitor-7686ccfc7d-rwr72   0/1     Completed     0          59m
+22:25:20.565 s3-monitor-7686ccfc7d-rwr72   0/1     Completed     0          59m

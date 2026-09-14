@@ -1,0 +1,17 @@
+21:26:14.524 NAME                          READY   STATUS    RESTARTS   AGE
+21:26:14.526 s3-monitor-7686ccfc7d-755j5   1/1     Running   0          20m
+21:26:14.527 s3-monitor-7686ccfc7d-pbgkk   1/1     Running   0          33s
+21:26:19.749 s3-monitor-7686ccfc7d-755j5   1/1     Terminating   0          20m
+21:26:19.760 s3-monitor-7686ccfc7d-rwr72   0/1     Pending       0          0s
+21:26:19.763 s3-monitor-7686ccfc7d-755j5   1/1     Terminating   0          20m
+21:26:19.766 s3-monitor-7686ccfc7d-rwr72   0/1     Pending       0          0s
+21:26:19.778 s3-monitor-7686ccfc7d-rwr72   0/1     ContainerCreating   0          0s
+21:26:19.871 s3-monitor-7686ccfc7d-rwr72   0/1     ContainerCreating   0          0s
+21:26:19.986 s3-monitor-7686ccfc7d-rwr72   0/1     ContainerCreating   0          0s
+21:26:20.082 s3-monitor-7686ccfc7d-rwr72   0/1     Running             0          1s
+21:26:20.958 s3-monitor-7686ccfc7d-rwr72   1/1     Running             0          1s
+21:26:21.946 s3-monitor-7686ccfc7d-rwr72   1/1     Running             0          2s
+21:26:25.186 s3-monitor-7686ccfc7d-755j5   1/1     Terminating         0          20m
+21:26:25.299 s3-monitor-7686ccfc7d-755j5   0/1     Completed           0          20m
+21:26:25.964 s3-monitor-7686ccfc7d-755j5   0/1     Completed           0          20m
+21:26:25.965 s3-monitor-7686ccfc7d-755j5   0/1     Completed           0          20m

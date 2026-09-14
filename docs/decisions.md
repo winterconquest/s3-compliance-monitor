@@ -285,9 +285,86 @@ apply가 필요하다. 코드도 `main.py`와 `lambda/alert.py`로 나뉘어 있
 | Webhook URL 관리 | `terraform.tfvars` + gitignore | 코드에 포함하지 않고 변수로 주입 |
 | 자격증명 전달 | `~/.aws` 마운트 | 로컬 실행 기준. EC2/ECS 배포 시 IAM Role로 전환 필요 |
 | lock 파일 | `.terraform.lock.hcl` 커밋 | provider 버전 고정으로 재현성 확보 |
+| K8s Secret 관리 |	secret.yaml.example 커밋 + 실제 파일 gitignore | tfvars와 동일 패턴. IRSA 전환 시 삭제 대상이 명확
+
 
 ---
 
 > 이 프로젝트의 판단 기준 일부는 [aws-3tier-infra](https://github.com/winterconquest/aws-3tier-infra)의
 > [decisions.md](https://github.com/winterconquest/aws-3tier-infra/blob/main/docs/decisions.md)와
 > 공유된다. dry-run과 `terraform plan`, 조치 전 확인 절차 같은 개념이 그렇다.
+
+### 로컬 클러스터 런타임 환경 — cgroup v2로의 전환
+ 
+**배경**
+ 
+기존 컴플라이언스 모니터를 EKS로 확장하기로 하면서, 매니페스트를 검증할 로컬
+클러스터가 먼저 필요했다. EKS에서 바로 시작하면 매니페스트 문법 오류 하나를 잡는
+데도 클러스터 기동 시간과 비용이 든다. 문법 단계의 시행착오는 로컬에서 털고 가는
+편이 낫다고 판단해 kind를 선택했다.
+ 
+첫 `kind create cluster`가 control-plane 시작 단계에서 실패했다. 인증서 생성,
+kubeconfig 작성, static Pod 매니페스트 작성까지는 모두 성공했고 kubelet 시작 로그도
+정상이었으나, 그 직후 API 서버(`172.19.0.2:6443`)에 대한 요청이 40초간
+`connection refused`로 반복되다 중단됐다.
+ 
+kubelet은 떴는데 kube-apiserver 컨테이너가 뜨지 못한 상태였다.
+ 
+**원인 규명**
+ 
+로그만으로는 원인이 특정되지 않아 후보를 세우고 각각을 측정으로 확인했다.
+ 
+| 후보 | 확인 방법 | 결과 | 판정 |
+|---|---|---|---|
+| inotify 한도 초과 | `/proc/sys/fs/inotify/max_user_instances`, `max_user_watches` | 8192 / 1048576 | 배제 |
+| 메모리 부족 | `free -h` | 31GB 중 25GB 여유 | 배제 |
+| cgroup 버전 불일치 | `stat -fc %T /sys/fs/cgroup/` | `tmpfs` (= cgroup v1) | **원인** |
+ 
+kind가 받아온 노드 이미지는 `kindest/node:v1.36.1`이었다. 실행 첫 줄에
+`cgroup v1 is deprecated in Kubernetes` 경고가 출력됐는데, 이 버전대는 cgroup v2를
+사실상 전제하므로 경고가 아니라 실패 원인이었다.
+ 
+WSL2의 cgroup 버전은 WSL 커널이 결정한다. 즉 프로젝트 설정이 아니라 실행 환경의
+문제였다.
+ 
+**검토한 선택지**
+ 
+| 방식 | 장점 | 단점 |
+|---|---|---|
+| WSL 커널 업데이트로 cgroup v2 전환 | 최신 노드 이미지를 그대로 사용. EKS 버전과 맞추기 쉬움 | WSL 재시작 필요, Docker Desktop 연동이 끊김 |
+| 노드 이미지를 v1.31대로 낮춤 | 명령 한 줄로 즉시 우회 | 로컬과 EKS의 K8s 버전이 벌어짐. 버전 차이로 인한 동작 차이를 나중에 로컬에서 재현할 수 없음 |
+ 
+**결정**
+ 
+WSL 커널을 업데이트해 cgroup v2로 전환했다.
+ 
+```
+wsl --update
+wsl --shutdown
+stat -fc %T /sys/fs/cgroup/    # → cgroup2fs
+```
+ 
+이 프로젝트에서 로컬 클러스터의 역할은 "일단 뜨는 환경"이 아니라 **EKS에서의 동작을
+미리 확인하는 환경**이다. 로컬과 EKS의 버전이 벌어지면 로컬에서 검증한 결과를
+그대로 신뢰할 수 없게 되고, 로컬 클러스터를 두는 이유 자체가 약해진다.
+ 
+우회 방식은 오늘의 1시간을 아끼는 대신 남은 기간 내내 "이 차이가 버전 때문인가"를
+의심하게 만든다. 환경 문제는 발생 시점에 해결하는 편이 총비용이 낮다고 판단했다.
+ 
+**트레이드오프**
+ 
+`wsl --shutdown`이 Docker Desktop의 WSL 백엔드까지 함께 내린다. 재시작 후 WSL 안에서
+`docker` 명령을 찾지 못하는 상태가 되어, Docker Desktop 실행과 WSL Integration 재확인이
+추가로 필요했다.
+ 
+원인 자체와는 무관한 부작용이지만, 조치 직후 나타나는 증상이라 별개의 장애로 오인하기
+쉽다. 기록해 둔다.
+ 
+**재검토 조건**
+ 
+- Week 3에서 EKS 클러스터 버전을 정할 때, 로컬 kind의 노드 이미지 버전과 맞춘다.
+  둘이 벌어지면 로컬 검증 결과의 신뢰도가 떨어진다.
+- Day 12의 NetworkPolicy 검증에는 기본 CNI가 아닌 Calico가 필요하다. 그 시점에
+  별도 kind 클러스터를 구성해야 하므로, 노드 이미지 버전 관리 지점이 하나 더 생긴다.
+- 다른 환경(다른 PC, CI)에서 클러스터를 만들 일이 생기면 cgroup 버전이 다시
+  변수가 된다. kind 설정을 파일로 고정하는 방식을 검토한다.

@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: s3-monitor
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/winterconquest/s3-compliance-monitor.git
+    targetRevision: feature/k8s
+    path: helm/s3-monitor
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-kind.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default    
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: s3-monitor
+      jsonPointers:
+        - /spec/replicas

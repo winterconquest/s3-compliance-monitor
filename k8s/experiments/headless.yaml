@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: s3-monitor-headless
+spec:
+  clusterIP: None
+  selector:
+    app: s3-monitor
+  ports:
+  - port: 8000
+    targetPort: 8000
