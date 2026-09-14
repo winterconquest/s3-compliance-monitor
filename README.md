@@ -5,7 +5,7 @@
 Terraform으로 프로비저닝한 S3 인프라의 설정 변경을 CloudTrail로 추적하고, IAM 사용자의 권한 설정을 점검하는 AWS 인프라 자동 점검 시스템이다.
 반복적인 점검 작업을 코드로 자동화하고, 안전하게 조치할 수 있는 구조를 목표로 한다.
 
-이후 이 애플리케이션을 EKS 환경으로 확장하며 RBAC 최소 권한, IRSA(정적 자격증명 제거), Kustomize 기반 환경 분리까지 구현했다. 단순히 컨테이너로 감싸는 것을 넘어, "탐지·조치 애플리케이션이 클라우드 네이티브 환경에서 어떻게 안전하게 운영되어야 하는가"까지 확장한 것이다.
+이후 이 애플리케이션을 EKS 환경으로 확장하며 RBAC 최소 권한, IRSA(정적 자격증명 제거), Helm 기반 배포, ArgoCD를 통한 GitOps까지 구현했다. 단순히 컨테이너로 감싸는 것을 넘어, "탐지·조치 애플리케이션이 클라우드 네이티브 환경에서 어떻게 안전하고 견고하게 운영되어야 하는가"까지 확장한 것이다.
 
 > 이 프로젝트에서 느낀 "탐지 이후"의 필요성이
 > [aws-3tier-infra](https://github.com/winterconquest/aws-3tier-infra)로 이어졌다.
@@ -32,7 +32,7 @@ S3 설정 변경 → CloudTrail 기록 → EventBridge 캐치 → Lambda 호출 
 한편 자동화는 이점만큼 위험성도 있기에, 단순 탐지에서 멈추지 않고 안전한 조치까지 함께 설계하는 것을 목표로 했다.
 점검 결과를 사람이 확인할 수 있는 형태로 노출하고, 조치는 명시적으로 분리해 의도하지 않은 변경을 막는 구조를 지향한다.
 
-이 원칙은 K8s 확장에서도 그대로 이어졌다. 애플리케이션이 AWS 리소스를 점검·조치할 권한을 어떻게 안전하게 위임받을 것인가라는 질문이, 정적 액세스 키에서 시작해 RBAC와 IRSA로 이어지는 확장의 출발점이었다.
+이 원칙은 K8s 확장에서도 그대로 이어졌다. 애플리케이션이 AWS 리소스를 점검·조치할 권한을 어떻게 안전하게 위임받을 것인가라는 질문이, 정적 액세스 키에서 시작해 RBAC와 IRSA로 이어지는 확장의 출발점이었다. 배포가 안정적으로 이루어지는가, 사람이 실수로 클러스터 상태를 흐트러뜨려도 정해진 상태로 돌아오는가라는 질문은 Pod 다운타임 개선과 ArgoCD 도입으로 이어졌다.
 
 
 ## 아키텍처
@@ -50,11 +50,16 @@ boto3 + FastAPI
 ├── /remediate       → 단일 버킷 조치 (dry-run 기본, 태그 기반 예외 처리)
 └── /auto-remediate  → 점검 결과 기반 위험 버킷 일괄 조치 (dry-run 기본)
 
-Kubernetes (Kustomize: base + overlays)
-├── overlays/kind → 로컬 개발·학습 (로컬 이미지, 완화된 readinessProbe)
-└── overlays/eks  → 실제 배포 (ECR 이미지, AWS 인증 포함 readinessProbe)
-    ├── ServiceAccount — 전용 SA, 토큰 자동 마운트 비활성화, 최소 권한 RBAC
-    └── IRSA — OIDC 기반 IAM Role, 정적 액세스 키 없이 AWS API 인증
+Kubernetes 배포 (정식: Helm, 참고용: Kustomize)
+├── helm/s3-monitor/  → values.yaml(공통) + values-{kind,eks}.yaml(환경별)
+│   ├── ServiceAccount — 전용 SA, 토큰 자동 마운트 비활성화, 최소 권한 RBAC
+│   ├── IRSA — OIDC 기반 IAM Role, 정적 액세스 키 없이 AWS API 인증
+│   ├── PodDisruptionBudget, HorizontalPodAutoscaler
+│   └── securityContext — non-root, 읽기전용 루트 파일시스템, capability 전체 제거
+└── k8s/ (Kustomize, 병행 유지 — k8s/README.md 참고)
+
+ArgoCD (GitOps)
+└── argocd/s3-monitor-app.yaml → Git 저장소 상태를 클러스터에 자동 동기화(selfHeal)
 ```
 
 ![Swagger UI - 점검·조치 엔드포인트](./docs/images/swagger-overview.png)
@@ -133,7 +138,7 @@ S3 설정 변경이 발생하는 즉시 운영자에게 알림이 도착하는 �
 
 ## Kubernetes 확장
 
-기존 컴플라이언스 애플리케이션을 EKS에 배포하면서, "클라우드 네이티브 환경에서 안전하게 운영되는 애플리케이션"이라는 관점을 더했다. 핵심은 단순 배포가 아니라 **권한을 최소한으로, 자격증명을 정적으로 남기지 않는 것**이다.
+기존 컴플라이언스 애플리케이션을 EKS에 배포하면서, "클라우드 네이티브 환경에서 안전하고 견고하게 운영되는 애플리케이션"이라는 관점을 더했다. 핵심은 단순 배포가 아니라 **권한을 최소한으로, 자격증명을 정적으로 남기지 않고, 배포 중 요청 손실을 없애는 것**이다.
 
 ### 정적 자격증명 제거 — 확인된 사실만 남긴다
 
@@ -206,23 +211,67 @@ kubectl auth can-i delete pods --as=system:serviceaccount:default:s3-monitor-sa 
 
 검증이 끝난 뒤에는 실제 사용처가 없는 권한이므로 Role/RoleBinding을 클러스터에서 제거했다 — 필요할 때 확인하고, 필요 없으면 남기지 않는다는 원칙을 실습에도 그대로 적용했다.
 
-### Kustomize — 환경별 차이를 최소한으로 명시한다
+### 컨테이너 보안 — securityContext
 
-로컬 개발(kind)과 실제 배포(EKS)는 이미지 출처와 헬스체크 기준이 다르다. kind는 로컬 이미지를 쓰고 AWS 인증이 불가능한 반면, EKS는 ECR 이미지를 쓰고 IRSA로 AWS 인증까지 검증한다. 이 차이를 하드코딩된 값 전환이 아니라 `base` + `overlays` 구조로 분리했다.
+루트 권한 없이, 쓰기 불가능한 파일시스템에서, 최소한의 커널 권한으로 실행되도록 구성했다.
 
+```yaml
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
 ```
-k8s/
-├── base/              # EKS를 기본값으로 — ECR 이미지, AWS 인증 포함 readinessProbe
-├── overlays/eks/       # base 그대로 참조 (patch 없음)
-└── overlays/kind/      # image, readinessProbe.path 두 값만 재정의
+
+`runAsNonRoot`는 Dockerfile에 숫자 UID(`USER 1000`)를 명시해야 적용 가능하다 — 문자열 사용자명은 kubelet이 사전에 검증할 수 없어 거부된다. `readOnlyRootFilesystem`은 코드가 로컬 디스크에 쓰기 작업을 하지 않는다는 것을 코드 검토와 실제 쓰기 시도(`touch` 거부 확인)로 검증한 뒤 적용했다.
+
+### Pod 배포 중 요청 손실 제거 — 실측 기반 개선
+
+배포·재시작 시 실제로 요청이 얼마나 유실되는지 외부에서 직접 계측하고, 원인을 구성 요소별로 분해해 단계적으로 개선했다.
+
+| 개선 단계 | 다운타임 | 누적 개선율 |
+|---|---|---|
+| 0. 최초 상태 | ~7.95초 | - |
+| 1. readinessProbe 재시도 주기 튜닝 (5s → 2s) | ~4.08초 | 49% |
+| 2. + preStop hook (종료 유예 5초) | ~3.585초 | 55% |
+| 3. + replicas 2, `maxUnavailable:0`/`maxSurge:1` | **0초** | **100%** |
+
+핵심 원인은 컨테이너 자체의 기동 속도(1초 미만)가 아니라, **kubelet이 새 Pod를 Ready로 인식하기까지 readinessProbe의 재시도 간격에 걸리는 구조적 지연**이었다. `preStop`은 종료 유예 시간 동안 컨테이너가 계속 응답 가능한 상태를 유지해 Endpoint 갱신이 전파될 시간을 벌어준다 — 대기 시간이 늘어나는 것이 곧 사용자 체감 다운타임 증가를 의미하지 않는다는 것을 실측으로 확인했다.
+
+`PodDisruptionBudget`(`minAvailable: 1`)으로 `kubectl drain` 시에도 최소 가용성이 보장되는 것을 검증했다. 다만 PDB는 명시적으로 보호 대상으로 지정한 리소스에만 적용된다 — 같은 클러스터의 PDB 없는 다른 컴포넌트(Ingress Controller 등)는 여전히 보호되지 않으므로, 애플리케이션 자체의 가용성과 그 앞단 경로의 가용성은 별도로 챙겨야 한다는 것도 확인했다.
+
+### HPA — CPU 기준 자동 스케일링
+
+```yaml
+minReplicas: 2
+maxReplicas: 5
+metrics:
+  - type: Resource
+    resource: {name: cpu, target: {type: Utilization, averageUtilization: 50}}
 ```
+
+부하 발생 시 약 1분 내 최대치까지 스케일 아웃, 부하 해소 후에는 `stabilizationWindowSeconds`(기본 300초) 동안 대기한 뒤 스케일 인 — 트래픽 출렁임에 의한 반복적 스케일링(flapping)을 방지하는 의도된 비대칭 동작임을 실측으로 확인했다.
+
+### Helm — 환경별 배포 관리
+
+Kustomize의 patch 기반 관리를 Helm 템플릿 기반으로 전환했다. 공통 설정(`values.yaml`)과 환경별 오버라이드(`values-kind.yaml`, `values-eks.yaml`)로 분리한다.
 
 ```bash
-kubectl apply -k k8s/overlays/kind   # 로컬 개발
-kubectl apply -k k8s/overlays/eks    # 실제 배포
+helm install s3-monitor helm/s3-monitor -f helm/s3-monitor/values.yaml -f helm/s3-monitor/values-kind.yaml
 ```
 
-바뀌지 않는 필드(probe의 `initialDelaySeconds`, `periodSeconds` 등)는 base 값이 그대로 유지되는 strategic merge patch 방식이라, 환경별 차이를 최소 단위로만 명시적으로 관리할 수 있다.
+계정 ID 등 민감 정보가 담긴 `values-eks.yaml`은 `.gitignore` 처리하고 `values-eks.yaml.example`로 형식만 공유한다. Kustomize 구성(`k8s/`)은 참고용으로 병행 유지한다 — [k8s/README.md](./k8s/README.md) 참고.
+
+### ArgoCD — GitOps 배포
+
+Git 저장소의 매니페스트 상태를 클러스터가 계속 따라가도록 ArgoCD로 구성했다.
+
+```bash
+kubectl apply -f argocd/s3-monitor-app.yaml
+```
+
+`selfHeal: true`로 수동 변경을 감지해 자동으로 Git 상태로 되돌리는 것을 확인했다. 다만 HPA가 관리하는 `replicas` 필드와 ArgoCD의 동기화가 충돌하는 것을 발견해, `ignoreDifferences`로 해당 필드를 ArgoCD 감시 대상에서 제외했다 — 여러 컨트롤러가 같은 필드를 관리하려 할 때는 소유권을 명시적으로 분리해야 한다는 것을 실제로 겪었다.
 
 ## 기술 스택
 
@@ -236,9 +285,12 @@ kubectl apply -k k8s/overlays/eks    # 실제 배포
 - Lambda : 알림 메시지 포맷팅 및 Slack 전송 (Python, 외부 의존성 없음)
 - Slack Incoming Webhook : 운영자에게 준실시간 알림 채널
 - Kubernetes (EKS) : 컨테이너 오케스트레이션, RBAC 기반 최소 권한 관리
-- Kustomize : 환경별(kind/EKS) 매니페스트 차이를 base+overlay로 분리
+- Helm : 환경별(kind/EKS) 배포 설정을 values 파일로 관리 (정식 배포 방식)
+- Kustomize : base+overlay 기반 환경 분리 (참고용, 병행 유지)
+- ArgoCD : GitOps 기반 선언적 배포, Git 상태와 클러스터 상태 자동 동기화
 - IRSA (IAM Roles for Service Accounts) : OIDC 기반 임시 자격증명, 정적 액세스 키 제거
 - ECR : 컨테이너 이미지 레지스트리
+- metrics-server / HPA : CPU 사용률 기반 자동 스케일링
 
 ## 실행 방법
 
@@ -256,19 +308,27 @@ docker run -v ${HOME}/.aws:/root/.aws -p 8000:8000 s3-monitor
 
 AWS 자격증명은 호스트의 `~/.aws/` 폴더를 컨테이너에 마운트하는 방식으로 전달한다. 이 방식은 로컬 개발용이며, K8s 환경에서는 아래와 같이 IRSA로 대체했다.
 
-### Kubernetes로 실행
+### Kubernetes로 실행 (Helm, 정식 배포 방식)
 
 ```bash
 # 로컬 kind 클러스터
 kind create cluster --config k8s/tmp/kind-calico.yaml
-kubectl apply -k k8s/overlays/kind
+helm install s3-monitor helm/s3-monitor -f helm/s3-monitor/values.yaml -f helm/s3-monitor/values-kind.yaml
 
 # EKS (사전에 terraform-eks/ 로 클러스터 프로비저닝 필요)
 aws eks update-kubeconfig --name <cluster-name> --region <region>
-kubectl apply -k k8s/overlays/eks
+helm install s3-monitor helm/s3-monitor -f helm/s3-monitor/values.yaml -f helm/s3-monitor/values-eks.yaml
 ```
 
 EKS 환경에서는 정적 자격증명 없이 IRSA를 통해 AWS API를 호출한다. `~/.aws` 마운트나 액세스 키 발급이 필요 없다.
+
+### ArgoCD로 배포 (GitOps)
+
+```bash
+kubectl apply -f argocd/s3-monitor-app.yaml
+```
+
+이후 클러스터 배포는 Git push를 통해서만 이루어지며, ArgoCD가 자동으로 감지해 동기화한다.
 
 ## 한계 및 개선 계획
 
@@ -281,5 +341,6 @@ EKS 환경에서는 정적 자격증명 없이 IRSA를 통해 AWS API를 호출�
 | Terraform state | S3 애플리케이션은 로컬 파일, EKS도 로컬 파일 | S3 원격 backend로 전환 (3-tier에는 적용 완료) |
 | 태그 예외 처리 | `AllowPublic=true` 부여만으로 조치 제외 | 태그 부여 이력을 CloudTrail로 별도 감사 |
 | IAM 조치 권한 범위 | `s3:PutBucketPublicAccessBlock`이 계정 전체(`Resource: "*"`) | 조치 대상 버킷을 태그 기반으로 스코핑 (CSPM 확장에서 다룰 예정) |
-| 배포 전략 | 수동 kubectl 배포, GitOps 없음 | ArgoCD 기반 선언적 배포로 전환 |
-| Pod 종료·재생성 시 요청 손실 | 미측정 | 외부 계측으로 실제 다운타임 구간 실측·개선 예정 |
+| Ingress Controller 가용성 | 단일 노드 kind에서 hostPort 제약으로 replicas 확장 불가(SPOF) | EKS(멀티 노드)에서 재검증 예정 |
+| 관측·비용 가시성 | CloudWatch Container Insights 미적용 | 적용 후 노드 타입·NAT Gateway 구성의 비용 근거를 Cost Explorer로 문서화 예정 |
+| API 에러 처리 일관성 | `/s3-status` 등 일부 엔드포인트가 AWS 인증 실패 시 500을 그대로 노출 | 예외 처리 통일, 503 등 적절한 상태 코드로 정리 |
