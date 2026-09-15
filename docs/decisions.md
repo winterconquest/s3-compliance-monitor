@@ -362,9 +362,134 @@ stat -fc %T /sys/fs/cgroup/    # → cgroup2fs
  
 **재검토 조건**
  
-- Week 3에서 EKS 클러스터 버전을 정할 때, 로컬 kind의 노드 이미지 버전과 맞춘다.
+- EKS 클러스터 버전을 정할 때, 로컬 kind의 노드 이미지 버전과 맞춘다.
   둘이 벌어지면 로컬 검증 결과의 신뢰도가 떨어진다.
-- Day 12의 NetworkPolicy 검증에는 기본 CNI가 아닌 Calico가 필요하다. 그 시점에
+- NetworkPolicy 검증에는 기본 CNI가 아닌 Calico가 필요하다. 그 시점에
   별도 kind 클러스터를 구성해야 하므로, 노드 이미지 버전 관리 지점이 하나 더 생긴다.
 - 다른 환경(다른 PC, CI)에서 클러스터를 만들 일이 생기면 cgroup 버전이 다시
   변수가 된다. kind 설정을 파일로 고정하는 방식을 검토한다.
+
+### EKS + ArgoCD 완전 자동 배포를 보류한 이유
+
+**배경**
+
+kind 환경에서는 ArgoCD Application(`argocd/s3-monitor-app.yaml`)을 한 번
+등록하는 것만으로 완전 자동 배포가 성립한다. `values-kind.yaml`이 계정
+식별 정보를 전혀 포함하지 않아 그대로 Git에 커밋되어 있기 때문이다.
+같은 방식을 EKS에도 적용하려 했으나, `values-eks.yaml`(ECR 이미지 경로,
+IRSA Role ARN 등 AWS 계정 ID를 포함)은 이 프로젝트가 지켜온 원칙에
+따라 `.gitignore` 처리되어 있어, ArgoCD가 Git에서 이 값을 읽을 방법이
+없었다.
+
+**검토한 선택지**
+
+| 방식 | 문제 |
+|---|---|
+| `values-eks.yaml`을 그냥 커밋 | 계정 ID가 공개 저장소에 영구 노출. 이 프로젝트가 지켜온 원칙과 정면으로 배치 |
+| ArgoCD `helm.parameters`에 값 직접 지정 | Application YAML도 Git에 커밋되는 파일이라 동일한 문제가 위치만 바뀌어 재발 |
+| External Secrets Operator(ESO) 도입 | 실제로 IRSA Trust Policy까지 설계해 검증했으나, 근본적으로 다른 계층의 도구임이 드러남(아래 참고) |
+
+**ESO가 이 문제에 맞지 않는 이유**
+
+ESO는 AWS Secrets Manager의 값을 K8s Secret으로 동기화해, **애플리케이션이
+런타임에 참조하는 시크릿**(API 키, DB 비밀번호 등)을 Git 밖에서 주입하는
+도구다. 그런데 우리가 감추려는 값(`image`, `serviceAccountRoleArn`)은
+**Pod가 뜨기 전에 매니페스트 구조 자체를 구성해야 하는 값**이다. 어떤
+이미지를 pull할지, ServiceAccount에 어떤 annotation을 붙일지는 컨테이너가
+실행되기 전에 이미 정해져 있어야 하므로, 런타임에 참조하는 Secret으로
+대체할 수 없다. 인증(Trust Policy, IRSA Role)까지 실제로 만들어보고 나서야
+이 구조적 한계가 명확해졌다 — 도구 이름만으로는 알기 어려웠던 지점이다.
+
+**실무 사례와의 비교**
+
+AWS 계정 ID 자체는 실무에서 대개 "비밀"로 취급되지 않는다. private
+저장소가 기본이고, API 응답이나 CloudTrail 로그 등에 어차피 노출되기
+때문이다. public 저장소에서 이 문제를 실제로 겪는 경우, 흔히 쓰는
+해법은 CI/CD 파이프라인의 Secrets 저장소에서 배포 직전에 값을 주입하는
+방식이다. 이는 **파이프라인이라는 별도 인프라가 이미 갖춰져 있다는
+전제** 위에서 저비용으로 가능한 해법이며, 이 프로젝트에는 그 전제
+자체가 없다.
+
+**결정**
+
+이 프로젝트 규모(개인 포트폴리오, public 저장소, 별도 CI/CD 파이프라인
+없음)에서는 시크릿 관리 인프라를 새로 도입하는 비용이 얻는 이득보다
+크다고 판단했다.
+
+- **kind**: ArgoCD가 Git만으로 완전 자동 배포(drift 감지, selfHeal 포함
+  검증 완료)
+- **EKS**: Terraform으로 인프라 프로비저닝은 완전 자동화하되, 애플리케이션
+  배포의 마지막 단계(`helm install`)는 수동 실행으로 남긴다. 계정 ID가
+  필요한 `values-eks.yaml`은 로컬에만 유지하고, `values-eks.yaml.example`로
+  형식만 공유한다(`k8s/overlays/eks/patch-*.yaml`과 동일한 패턴).
+
+이는 몰라서 못 한 제약이 아니라, 세 가지 해법(직접 커밋, ArgoCD
+parameters, ESO)을 실제로 검토·일부는 구현까지 해보고 비용 대비 효과를
+따져 내린 판단이다.
+
+**재검토 조건**
+
+- CI/CD 파이프라인(GitHub Actions 등)을 도입하게 되면, 그 파이프라인의
+  Secrets 저장소에서 배포 시점에 값을 주입하는 방식으로 EKS도 완전
+  자동화할 수 있다.
+- 여러 사람이 이 저장소에 기여하는 상황이 되면, private 저장소 전환이나
+  Sealed Secrets 도입을 재검토한다 — 지금은 혼자 운영하는 로컬 파일
+  관리로 충분하지만, 협업 환경에서는 "로컬에만 있는 값"이라는 전제가
+  깨진다.
+
+### Egress 정책을 아직 적용하지 않은 이유
+
+**배경**
+
+보안 기준선 점검 항목 7개 중 6개는 실제 구현·검증까지 마쳤으나
+(RBAC, IRSA, securityContext 4종), Egress 정책만 계속 뒤로 밀렸다.
+NetworkPolicy를 다룬 적은 있지만 Ingress(들어오는 트래픽) 방향만
+설정했고, Egress(나가는 트래픽)는 명시적으로 보류한 적 없이 로드맵
+우선순위에서 자연스럽게 밀렸다.
+
+**설계해본 결과 — 표준 NetworkPolicy의 한계**
+
+`default-deny-egress` 후 예외를 뚫는 구조 자체는 이미 적용한 Ingress
+정책과 대칭적이라 어렵지 않다. DNS(CoreDNS) 예외는 네임스페이스·
+Pod selector로 명확하게 좁힐 수 있다.
+
+문제는 AWS API(S3, IAM, STS, CloudTrail) 예외다. 표준 K8s
+NetworkPolicy는 클러스터 밖 트래픽을 **IP CIDR 블록**으로만
+제한할 수 있고, 도메인 이름 기반 필터링을 지원하지 않는다. AWS가
+`ip-ranges.json`으로 서비스별 IP 대역을 공개하긴 하지만, 이 대역은
+AWS가 수시로 변경하므로 하드코딩하면 예고 없이 앱이 막힐 위험이
+있다.
+
+**실무 사례 조사**
+
+이 문제를 표준 NetworkPolicy만으로 푸는 경우는 실무에서도 흔치 않다.
+일반적인 해법은 계층을 분리하는 것이다.
+
+- **VPC Endpoint** (Gateway: S3, Interface: STS/IAM/CloudTrail) — AWS API
+  트래픽을 애초에 인터넷(NAT Gateway)으로 내보내지 않고 VPC 내부에서
+  AWS 백본으로 직접 연결한다. 이러면 IP 대역 변동 문제 자체가 사라지고,
+  Security Group으로 간단히 통제 가능해진다.
+- **NetworkPolicy는 최후 방어선으로 축소** — VPC Endpoint로 경로가
+  좁혀진 상태에서, "DNS + Endpoint로만 나가게" 허용하면 되므로
+  전체 공인 IP 대역을 몰라도 된다.
+- 더 정교한 FQDN 기반 필터링이 필요하면 Cilium 등 별도 CNI나 Istio
+  같은 서비스 메시를 쓰는 경우가 많다 — 지금 쓰는 CNI(Calico OSS)의
+  기본 기능 밖이다.
+
+**결정**
+
+VPC Endpoint 추가 자체는 Terraform 리소스 몇 개(Gateway Endpoint 1개,
+Interface Endpoint 3개, Security Group 1개) 수준으로 규모가 크지
+않다는 것까지 확인했다. 다만 이미 보안기준선 7개 중 6개를 실제
+구현·검증까지 마친 상태에서, 남은 1개를 구현하는 것의 한계효용보다
+**"어떻게 접근해야 하는지, 왜 지금 당장 하지 않았는지"를 정확히
+기록해두는 것**이 이 시점에는 더 유효하다고 판단해 구현은 보류한다.
+
+**재검토 조건**
+
+- CSPM 확장(IAM Resource 스코핑과 함께)이나 별도 세션에서 VPC
+  Endpoint(S3, STS, IAM, CloudTrail) + NetworkPolicy egress 예외를
+  함께 구현한다.
+- 이 프로젝트가 실제 프로덕션 트래픽을 받는 시점이 온다면, Egress
+  통제 없이 컨테이너가 임의로 외부와 통신 가능한 상태는 우선순위를
+  올려 즉시 해소해야 한다.

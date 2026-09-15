@@ -1,0 +1,35 @@
+# 학습용 실습 — EKS에서도 kind처럼 ArgoCD 완전 자동 배포를 시도했으나,
+# values-eks.yaml(계정 ID 포함)을 공개 저장소에 커밋할 수 없어 ArgoCD가
+# 이 값을 읽을 방법이 없음. 클러스터에는 미적용. 판단 근거는
+# docs/decisions.md의 "EKS + ArgoCD 완전 자동 배포를 보류한 이유" 참고.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: s3-monitor-eks
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/winterconquest/s3-compliance-monitor.git
+    targetRevision: main
+    path: helm/s3-monitor
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-eks.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default    
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  ignoreDifferences: 
+    - group: apps
+      kind: Deployment
+      name: s3-monitor
+      jsonPointers:
+        - /spec/replicas

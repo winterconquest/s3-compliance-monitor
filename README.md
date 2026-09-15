@@ -341,6 +341,9 @@ kubectl apply -f argocd/s3-monitor-app.yaml
 | Terraform state | S3 애플리케이션은 로컬 파일, EKS도 로컬 파일 | S3 원격 backend로 전환 (3-tier에는 적용 완료) |
 | 태그 예외 처리 | `AllowPublic=true` 부여만으로 조치 제외 | 태그 부여 이력을 CloudTrail로 별도 감사 |
 | IAM 조치 권한 범위 | `s3:PutBucketPublicAccessBlock`이 계정 전체(`Resource: "*"`) | 조치 대상 버킷을 태그 기반으로 스코핑 (CSPM 확장에서 다룰 예정) |
+| Egress 정책 | NetworkPolicy가 Ingress 방향만 제한, Egress는 무제한 | VPC Endpoint(S3/STS/IAM/CloudTrail)로 AWS API 트래픽을 경로 자체를 좁힌 뒤 NetworkPolicy egress 규칙 적용 |
 | Ingress Controller 가용성 | 단일 노드 kind에서 hostPort 제약으로 replicas 확장 불가(SPOF) | EKS(멀티 노드)에서 재검증 예정 |
-| 관측·비용 가시성 | CloudWatch Container Insights 미적용 | 적용 후 노드 타입·NAT Gateway 구성의 비용 근거를 Cost Explorer로 문서화 예정 |
+| EKS 배포 자동화 | Terraform은 완전 자동, `helm install`은 수동 실행 | CI/CD 파이프라인의 Secrets 저장소에서 배포 시점에 값을 주입하는 방식으로 완전 자동화 검토 |
+| 관측·비용 가시성 | Container Insights 검증 완료(일시적 활성화, 상시 미운영) | 상시 운영 여부 및 프로젝트별 비용 분리를 위한 태그 체계 검토 |
 | API 에러 처리 일관성 | `/s3-status` 등 일부 엔드포인트가 AWS 인증 실패 시 500을 그대로 노출 | 예외 처리 통일, 503 등 적절한 상태 코드로 정리 |
+
