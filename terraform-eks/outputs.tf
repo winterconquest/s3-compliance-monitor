@@ -21,3 +21,7 @@ output "private_subnet_ids" {
 output "s3_monitor_irsa_role_arn" {
   value = aws_iam_role.s3_monitor_irsa.arn
 }
+
+output "cloudwatch_agent_irsa_role_arn" {
+  value = aws_iam_role.cloudwatch_agent_irsa.arn
+}

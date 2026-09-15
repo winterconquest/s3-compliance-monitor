@@ -53,6 +53,32 @@ data "aws_iam_policy_document" "s3_monitor_irsa_trust" {
   }
 }
 
+#trust policy - container insights
+data "aws_iam_policy_document" "cloudwatch_agent_irsa_trust" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.eks.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:sub"
+      values   = ["system:serviceaccount:amazon-cloudwatch:cloudwatch-agent"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks.url, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+
+}
+
 #permission policy
 data "aws_iam_policy_document" "s3_monitor_permissions" {
   statement {
@@ -131,4 +157,15 @@ resource "aws_iam_policy" "s3_monitor_permissions" {
 resource "aws_iam_role_policy_attachment" "s3_monitor_irsa_attach" {
   role       = aws_iam_role.s3_monitor_irsa.name
   policy_arn = aws_iam_policy.s3_monitor_permissions.arn
+}
+
+
+resource "aws_iam_role" "cloudwatch_agent_irsa" {
+  name               = "cloudwatch-agent-irsa-role"
+  assume_role_policy = data.aws_iam_policy_document.cloudwatch_agent_irsa_trust.json
+}
+
+resource "aws_iam_role_policy_attachment" "cloudwatch_agent_attach" {  #aws가 cloudwatch agent에 필요한 권한을 미리 정의해둠
+  role       = aws_iam_role.cloudwatch_agent_irsa.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
